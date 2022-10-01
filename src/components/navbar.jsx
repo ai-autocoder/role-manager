@@ -1,21 +1,23 @@
+import { NavLink } from "react-router-dom";
+
 function Navbar() {
   return (
-    <header>
+    <nav>
       <ul className="flex place-content-center gap-6 text-2xl">
         <li>
-          <a>Calculate</a>
+          <NavLink to="/">Home</NavLink>
         </li>
         <li>
-          <a>Team</a>
+          <NavLink to="/team">Team</NavLink>
         </li>
         <li>
-          <a>Roles</a>
+          <NavLink to="/roles">Roles</NavLink>
         </li>
         <li>
-          <a>History</a>
+          <NavLink to="/history">History</NavLink>
         </li>
       </ul>
-    </header>
+    </nav>
   );
 }
 
