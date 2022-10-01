@@ -1,7 +1,12 @@
+import Navbar from "./components/navbar";
+import RoleCalculator from "./components/roleCalculator";
+import TeamList from "./components/teamList";
+import History from "./components/history";
+
 function App() {
   return (
-    <div className="text-center text-3xl font-bold underline">
-      <header className="App-header">Hello</header>
+    <div>
+      <Navbar />
     </div>
   );
 }
