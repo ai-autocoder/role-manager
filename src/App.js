@@ -1,8 +1,4 @@
 import Navbar from "./components/navbar";
-// import RoleCalculator from "./components/roleCalculator";
-// import TeamList from "./components/teamList";
-// import RolesList from "./components/rolesList";
-// import History from "./components/history";
 import { Route, Routes } from "react-router-dom";
 import { MenuItems } from "./components/menuItems";
 
