@@ -8,7 +8,11 @@ function Navbar() {
         {MenuItems.map((item, index) => {
           return (
             <li key={index}>
-              <NavLink to={item.url} className="opacity-70 hover:opacity-100">
+              <NavLink
+                to={item.url}
+                className="opacity-70 hover:opacity-100"
+                end
+              >
                 {item.Title}
               </NavLink>
             </li>
