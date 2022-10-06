@@ -5,7 +5,7 @@ function Navbar() {
   const location = useLocation();
 
   return (
-    <nav className="p-4">
+    <nav className="p-4 mb-8">
       <ul className="flex place-content-center gap-6 text-2xl font-medium">
         {MenuItems.map((item, index) => {
           return (

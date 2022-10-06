@@ -4,9 +4,9 @@ import { MenuItems } from "./components/menuItems";
 
 function App() {
   return (
-    <div className="container min-h-screen min-w-full dark:bg-neutral-700 text-neutral-200">
+    <div className="container min-h-screen min-w-full dark:bg-neutral-700 text-neutral-200 p-4">
       <Navbar />
-      <div>
+      <main>
         <Routes>
           {MenuItems.map((item, index) => {
             return (
@@ -14,7 +14,7 @@ function App() {
             );
           })}
         </Routes>
-      </div>
+      </main>
     </div>
   );
 }
