@@ -1,6 +1,6 @@
 import Navbar from "./components/navbar";
 import { Route, Routes } from "react-router-dom";
-import { MenuItems } from "./components/menuItems";
+import { MenuItems } from "./components/data/menuItems";
 
 function App() {
   return (

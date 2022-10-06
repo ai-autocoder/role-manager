@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { MenuItems } from "./menuItems";
+import { MenuItems } from "./data/menuItems";
 
 function Navbar() {
   const location = useLocation();

@@ -1,7 +1,7 @@
-import RoleCalculator from "./roleCalculator";
-import TeamList from "./teamList";
-import RolesList from "./rolesList";
-import History from "./history";
+import RoleCalculator from "../roleCalculator";
+import TeamList from "../teamList";
+import RolesList from "../rolesList";
+import History from "../history";
 
 export const MenuItems = [
   {
