@@ -1,6 +1,6 @@
 import Navbar from "./components/navbar";
 import { Route, Routes } from "react-router-dom";
-import { MenuItems } from "./components/data/menuItems";
+import { menuItems } from "./components/data/menuItems";
 
 function App() {
   return (
@@ -8,7 +8,7 @@ function App() {
       <Navbar />
       <main>
         <Routes>
-          {MenuItems.map((item, index) => {
+          {menuItems.map((item, index) => {
             return (
               <Route key={index} path={item.url} element={item.component} />
             );

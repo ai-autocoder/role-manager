@@ -3,7 +3,7 @@ import TeamList from "../teamList";
 import RolesList from "../rolesList";
 import History from "../history";
 
-export const MenuItems = [
+export const menuItems = [
   {
     Title: "Home",
     url: "/",

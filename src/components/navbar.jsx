@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { MenuItems } from "./data/menuItems";
+import { menuItems } from "./data/menuItems";
 
 function Navbar() {
   const location = useLocation();
@@ -7,7 +7,7 @@ function Navbar() {
   return (
     <nav className="p-4 mb-8">
       <ul className="flex place-content-center gap-6 text-2xl font-medium">
-        {MenuItems.map((item, index) => {
+        {menuItems.map((item, index) => {
           return (
             <li key={index}>
               <NavLink
