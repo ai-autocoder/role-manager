@@ -2,7 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  background-color: var(--surface-ground);
+  color: var(--text-color);
+}
+
 .icon {
   height: 2rem;
   width: 2rem;
+}
+
+/* Dropdown */
+.p-dropdown-label {
+  padding-right: 6rem !important;
+}
+.p-dropdown-items-wrapper {
+  max-height: 300px !important;
 }

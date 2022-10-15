@@ -2,9 +2,13 @@ import Navbar from "./components/navbar";
 import { Route, Routes } from "react-router-dom";
 import { menuItems } from "./components/data/menuItems";
 
+import "primereact/resources/themes/lara-dark-teal/theme.css"; //theme
+import "primereact/resources/primereact.min.css"; //core css
+import "primeicons/primeicons.css"; //icons
+
 function App() {
   return (
-    <div className="container min-h-screen min-w-full dark:bg-neutral-700 text-neutral-200 p-4">
+    <div className="container min-h-screen min-w-full p-4">
       <Navbar />
       <main>
         <Routes>
