@@ -1,5 +1,7 @@
 import Navbar from "./components/navbar";
 import { Route, Routes } from "react-router-dom";
+import { useState } from "react";
+import { roles } from "./components/data/roles";
 import RoleCalculator from "./components/roleCalculator";
 import TeamList from "./components/teamList";
 import RolesList from "./components/rolesList";
@@ -84,12 +86,34 @@ function App() {
     },
   ];
 
+  // calculate event
+
+  // pool object (which will be pushed in the history database)
+  const pool = roles.map((role) => ({
+    id: role.id,
+    roleCode: role.code,
+    usersAvailabe: getUsers(role.code),
+    volunteer: undefined,
+    userSelected: undefined,
+  }));
+
+  function getUsers(roleCode) {
+    return team.flatMap((user) =>
+      user.rolesAvailable.includes(roleCode) ? user.name : []
+    );
+  }
+
+  const [poolState, setPoolState] = useState(pool);
+
   return (
     <div className="container min-h-screen min-w-full p-4">
       <Navbar />
       <main>
         <Routes>
-          <Route path="/" element={<RoleCalculator />} />
+          <Route
+            path="/"
+            element={<RoleCalculator pool={poolState} setPool={setPoolState} />}
+          />
           <Route path="/team" element={<TeamList />} />
           <Route path="/roles" element={<RolesList />} />
           <Route path="/history" element={<History />} />
