@@ -1,6 +1,9 @@
 import Navbar from "./components/navbar";
 import { Route, Routes } from "react-router-dom";
-import { menuItems } from "./components/data/menuItems";
+import RoleCalculator from "./components/roleCalculator";
+import TeamList from "./components/teamList";
+import RolesList from "./components/rolesList";
+import History from "./components/history";
 
 import "primereact/resources/themes/lara-dark-teal/theme.css"; //theme
 import "primereact/resources/primereact.min.css"; //core css
@@ -86,11 +89,10 @@ function App() {
       <Navbar />
       <main>
         <Routes>
-          {menuItems.map((item, index) => {
-            return (
-              <Route key={index} path={item.url} element={item.component} />
-            );
-          })}
+          <Route path="/" element={<RoleCalculator />} />
+          <Route path="/team" element={<TeamList />} />
+          <Route path="/roles" element={<RolesList />} />
+          <Route path="/history" element={<History />} />
         </Routes>
       </main>
     </div>
