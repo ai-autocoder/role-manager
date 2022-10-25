@@ -1,8 +1,26 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { menuItems } from "./data/menuItems";
 
 function Navbar() {
   const location = useLocation();
+
+  const menuItems = [
+    {
+      title: "Home",
+      url: "/",
+    },
+    {
+      title: "Team",
+      url: "/team",
+    },
+    {
+      title: "Roles",
+      url: "/roles",
+    },
+    {
+      title: "History",
+      url: "/history",
+    },
+  ];
 
   return (
     <nav className="p-4 mb-8">
@@ -36,7 +54,7 @@ function Navbar() {
                 `}
                 end
               >
-                {item.Title}
+                {item.title}
               </NavLink>
             </li>
           );
