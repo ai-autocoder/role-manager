@@ -12,51 +12,60 @@ import "primereact/resources/primereact.min.css"; //core css
 import "primeicons/primeicons.css"; //icons
 
 function App() {
+  const enabledRoles = roles.filter((role) => role.enabled);
   // Fetch team from database
   const team = [
     {
+      id: 0,
       name: "user1",
       rolesAvailable: ["gar", "revT1", "revT2", "hun"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 1,
       name: "user2",
       rolesAvailable: ["gar", "revT1", "revT2"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 2,
       name: "user3",
       rolesAvailable: ["gar", "revT1", "revT2", "hun"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 3,
       name: "user4",
       rolesAvailable: ["revT1", "revT2", "hun"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 4,
       name: "user5",
       rolesAvailable: ["revT1", "revT2", "rep"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 5,
       name: "user6",
       rolesAvailable: ["gar", "revT1", "revT2", "mas"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 6,
       name: "user7",
       rolesAvailable: ["gar", "revT1", "revT2", "hun"],
       isAway: false,
       volunteer: "",
     },
     {
+      id: 7,
       name: "user8",
       rolesAvailable: ["revT1", "revT2", "mas"],
       isAway: false,
@@ -115,26 +124,29 @@ function App() {
   const historyLength = historyDb.length;
 
   // Build pool state object (which will be pushed in the history database)
-  //TODO: filter out disabled roles
-  const pool = roles.map((role) => ({
+  const pool = enabledRoles.map((role) => ({
     id: role.id,
     roleCode: role.code,
-    usersAvailabe: getUsers(role.code),
+    roleName: role.name,
+    usersAvailable: getUsers(role.code),
     volunteer: undefined,
     userSelected: undefined,
   }));
 
   // Build user history record
   const userHistory = team.map((user) => ({
+    id: user.id,
     name: user.name,
     lastDoneRoles: getUserHistory(user.name),
   }));
 
   function getUserHistory(userName) {
     // Initialize the array with the max value
-    let tempHistoryArray = roles.flatMap((role) =>
-      role.enabled ? { role: role.code, lastDone: historyLength } : []
-    );
+    let tempHistoryArray = enabledRoles.map((role) => ({
+      id: role.id,
+      role: role.code,
+      lastDone: historyLength,
+    }));
 
     for (const [index, week] of historyDb.entries()) {
       const key = historyLength - (index + 1); // key represents the week number, last entries are the most recent weeks
@@ -167,7 +179,14 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={<RoleCalculator pool={poolState} setPool={setPoolState} />}
+            element={
+              <RoleCalculator
+                pool={poolState}
+                setPool={setPoolState}
+                userHistory={userHistory}
+                enabledRoles={enabledRoles}
+              />
+            }
           />
           <Route path="/team" element={<TeamList />} />
           <Route path="/roles" element={<RolesList />} />
