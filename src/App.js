@@ -1,15 +1,16 @@
-import Navbar from "./components/navbar";
+import React, { useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import { useState } from "react";
 import { roles } from "./components/data/roles";
-import RoleCalculator from "./components/roleCalculator";
-import TeamList from "./components/teamList";
-import RolesList from "./components/rolesList";
 import History from "./components/history";
+import Navbar from "./components/navbar";
+import RoleCalculator from "./components/roleCalculator";
+import RolesList from "./components/rolesList";
+import TeamList from "./components/teamList";
+import Users from "./components/users";
 
-import "primereact/resources/themes/lara-dark-teal/theme.css"; //theme
-import "primereact/resources/primereact.min.css"; //core css
 import "primeicons/primeicons.css"; //icons
+import "primereact/resources/primereact.min.css"; //core css
+import "primereact/resources/themes/lara-dark-teal/theme.css"; //theme
 
 function App() {
   const enabledRoles = roles.filter((role) => role.enabled);
@@ -173,7 +174,7 @@ function App() {
   const [poolState, setPoolState] = useState(pool);
 
   return (
-    <div className="container min-h-screen min-w-full p-4">
+    <div className="container min-w-full min-h-screen p-4">
       <Navbar />
       <main>
         <Routes>
@@ -193,6 +194,8 @@ function App() {
           <Route path="/history" element={<History />} />
         </Routes>
       </main>
+
+      <Users />
     </div>
   );
 }
