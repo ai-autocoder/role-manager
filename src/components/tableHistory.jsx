@@ -16,9 +16,14 @@ const TableHistory = ({ userHistory, selectHandler, pool }) => {
       <td key={`${user.id}${role.id}`}>
         <button
           type="button"
-          className={`p-5 rounded-md enabled:hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-25 ${
-            isSelected ? "bg-cyan-500" : ""
-          }`}
+          className={`p-5 rounded enabled:hover:bg-surface-hover disabled:opacity-25 focus:shadow-focus`}
+          style={{
+            border: isSelected
+              ? "2px solid var(--primary-color)"
+              : "2px solid var(--surface-ground)",
+            outline: "0 none",
+            outlineOffset: "0",
+          }}
           onClick={() => selectHandler(role.id, user.name)}
           disabled={!isAvailable}
         >
@@ -33,7 +38,11 @@ const TableHistory = ({ userHistory, selectHandler, pool }) => {
   }
 
   return (
-    <table>
+    <table
+      style={{
+        border: "1px solid var(--surface-border)",
+      }}
+    >
       <thead>
         <tr>
           <th className="p-5">User</th>

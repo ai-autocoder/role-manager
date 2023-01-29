@@ -33,25 +33,26 @@ function Navbar() {
                 className={`
                 px-6
                 py-2.5
-                opacity-70 
-                rounded
+                opacity-70
                 transition
                 duration-150
                 ease-in-out
                 flex
                 items-center
                 whitespace-nowrap
-                hover:opacity-100
+					 hover:bg-surface-hover
                 dark: opacity-100
-                dark: hover:bg-slate-500
-                ${
-                  location.pathname === item.url
-                    ? `
-                  dark: bg-green-600
-                  dark: hover:bg-green-600`
-                    : ""
-                }
+					 focus:shadow-focus
                 `}
+                style={{
+                  borderRadius: "var(--border-radius)",
+                  border:
+                    location.pathname === item.url
+                      ? "2px solid var(--primary-color)"
+                      : "2px solid var(--surface-ground)",
+                  outline: "0 none",
+                  outlineOffset: "0",
+                }}
                 end
               >
                 {item.title}
