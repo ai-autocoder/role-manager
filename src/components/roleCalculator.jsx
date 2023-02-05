@@ -23,30 +23,32 @@ function RoleCalculator({ pool, setPool, userHistory, enabledRoles }) {
   }
   return (
     <div>
-      <div className="week-selector text-4xl flex gap-10 justify-center	mb-16">
+      <div className="week-selector text-2xl flex gap-10 justify-center	mb-16">
         <button>&lt;</button>
         <h2>{isCurrentWeek ? "Current Week" : "Week "}</h2>
         <button>&gt;</button>
       </div>
-      <div className="role-card-container">
-        {pool.map((role) => {
-          return (
-            <RoleCard
-              key={role.id}
-              roleId={role.id}
-              team={role.usersAvailable}
-              selected={role.userSelected}
-              selectHandler={(user) => selectHandler(role.id, user)}
-            />
-          );
-        })}
-      </div>
-      <div className="role-history-container">
-        <TableHistory
-          userHistory={userHistory}
-          selectHandler={selectHandler}
-          pool={pool}
-        />
+      <div className="container mx-auto flex flex-wrap justify-center gap-6">
+        <div className="flex-1 border border-solid border-surface-border rounded max-w-fit">
+          {pool.map((role) => {
+            return (
+              <RoleCard
+                key={role.id}
+                roleId={role.id}
+                team={role.usersAvailable}
+                selected={role.userSelected}
+                selectHandler={(user) => selectHandler(role.id, user)}
+              />
+            );
+          })}
+        </div>
+        <div className="flex-1 flex justify-center max-w-fit border border-solid border-surface-border rounded">
+          <TableHistory
+            userHistory={userHistory}
+            selectHandler={selectHandler}
+            pool={pool}
+          />
+        </div>
       </div>
     </div>
   );

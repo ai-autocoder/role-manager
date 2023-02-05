@@ -6,7 +6,7 @@ function RoleCard({ roleId, team, selected, selectHandler }) {
   const roleIcon = roles[roleId].icon;
 
   return (
-    <div className="flex items-center p-5 gap-5">
+    <div className="flex items-center justify-center p-5 gap-5">
       <div title={`${roleName}`}>{roleIcon}</div>
       <Dropdown
         value={selected}

@@ -16,7 +16,7 @@ const TableHistory = ({ userHistory, selectHandler, pool }) => {
       <td key={`${user.id}${role.id}`}>
         <button
           type="button"
-          className={`p-5 rounded enabled:hover:bg-surface-hover disabled:opacity-25 focus:shadow-focus`}
+          className="p-5 rounded enabled:hover:bg-surface-hover disabled:opacity-25 focus:shadow-focus"
           style={{
             border: isSelected
               ? "2px solid var(--primary-color)"
@@ -38,11 +38,7 @@ const TableHistory = ({ userHistory, selectHandler, pool }) => {
   }
 
   return (
-    <table
-      style={{
-        border: "1px solid var(--surface-border)",
-      }}
-    >
+    <table>
       <thead>
         <tr>
           <th className="p-5">User</th>

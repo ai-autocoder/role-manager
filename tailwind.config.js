@@ -7,6 +7,7 @@ module.exports = {
       "primary-color": "var(--primary-color)",
       "surface-hover": "var(--surface-hover)",
       "surface-ground": "var(--surface-ground)",
+      "surface-border": "var(--surface-border)",
     },
     borderRadius: {
       DEFAULT: "var(--border-radius)",
