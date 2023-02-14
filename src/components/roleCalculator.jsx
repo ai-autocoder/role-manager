@@ -1,7 +1,7 @@
 import RoleCard from "./roleCard";
 import TableHistory from "./tableHistory";
 
-function RoleCalculator({ pool, setPool, userHistory, enabledRoles }) {
+function RoleCalculator({ pool, setPool, userHistory, enabledRoles, assignHandler }) {
   // if weekending does not match with current week, show 'calculate roles' button
   const isCurrentWeek = (() => {
     const today = new Date();
@@ -14,19 +14,17 @@ function RoleCalculator({ pool, setPool, userHistory, enabledRoles }) {
     return true;
   })();
 
-  function selectHandler(id, user) {
-    setPool((prevPool) => {
-      return prevPool.map((role) => {
-        return role.id === id ? { ...role, userSelected: user } : role;
-      });
-    });
-  }
+ 
+
   return (
     <div>
       <div className="week-selector text-2xl flex gap-10 justify-center	mb-16">
         <button>&lt;</button>
         <h2>{isCurrentWeek ? "Current Week" : "Week "}</h2>
         <button>&gt;</button>
+      </div>
+      <div className="flex justify-center">
+        <button onClick={assignHandler}>Assign Roles</button>
       </div>
       <div className="container mx-auto flex flex-wrap justify-center gap-6">
         <div className="flex-1 border border-solid border-surface-border rounded max-w-fit">
@@ -37,7 +35,7 @@ function RoleCalculator({ pool, setPool, userHistory, enabledRoles }) {
                 roleId={role.id}
                 team={role.usersAvailable}
                 selected={role.userSelected}
-                selectHandler={(user) => selectHandler(role.id, user)}
+                selectHandler={(user) => setPool(role.id, user)}
               />
             );
           })}
@@ -45,7 +43,7 @@ function RoleCalculator({ pool, setPool, userHistory, enabledRoles }) {
         <div className="flex-1 flex justify-center max-w-fit border border-solid border-surface-border rounded">
           <TableHistory
             userHistory={userHistory}
-            selectHandler={selectHandler}
+            selectHandler={setPool}
             pool={pool}
           />
         </div>

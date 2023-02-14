@@ -134,6 +134,42 @@ function App() {
     userSelected: undefined,
   }));
 
+  // Assign roles
+  function assignRoles() {
+    // Sort roles from the one with less users available to the one with more users
+    const sortedPool = pool.sort((a, b) => {
+      return a.usersAvailable.length - b.usersAvailable.length;
+    });
+
+    // For each available user, find who done the role least recently
+    sortedPool.forEach((role) => {
+      const roleCode = role.roleCode;
+      const assignedUser = {
+        name: "",
+        lastDone: -1,
+      };
+
+      role.usersAvailable.forEach((user) => {
+        // Find user in userHistory array
+        const userIndex = userHistory.findIndex(
+          (userHistory) => userHistory.name === user
+        );
+        // Find role in userHistory.lastDoneRoles array
+        const roleIndex = userHistory[userIndex].lastDoneRoles.findIndex(
+          (role) => role.role === roleCode
+        );
+        const lastDone = userHistory[userIndex].lastDoneRoles[roleIndex].lastDone;
+        if (lastDone > assignedUser.lastDone) {
+          assignedUser.name = userHistory[userIndex].name;
+			  assignedUser.lastDone = lastDone;
+        }
+      });
+
+      // Now assign set the state to assign role to assignedUser
+      selectHandler(role.id, assignedUser.name)
+    });
+  }
+
   // Build user history record
   const userHistory = team.map((user) => ({
     id: user.id,
@@ -171,7 +207,11 @@ function App() {
     );
   }
 
-  const [poolState, setPoolState] = useState(pool);
+	const [poolState, setPoolState] = useState(pool);
+	
+	function selectHandler(roleId, user) {
+		setPoolState((poolState) => poolState.map((role) => role.id === roleId ? { ...role, userSelected: user } : role));
+	 }
 
   return (
     <div className="container min-w-full min-h-screen p-4">
@@ -183,9 +223,10 @@ function App() {
             element={
               <RoleCalculator
                 pool={poolState}
-                setPool={setPoolState}
+                setPool={selectHandler}
                 userHistory={userHistory}
-                enabledRoles={enabledRoles}
+						enabledRoles={enabledRoles}
+						assignHandler={assignRoles}
               />
             }
           />
