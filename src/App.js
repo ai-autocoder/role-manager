@@ -136,7 +136,7 @@ function App() {
 
   // Assign roles
   function assignRoles() {
-    // Sort roles from the one with less users available to the one with more users
+    // Sort roles array by number of users available (increasing)
     const sortedPool = pool.sort((a, b) => {
       return a.usersAvailable.length - b.usersAvailable.length;
     });
@@ -158,15 +158,16 @@ function App() {
         const roleIndex = userHistory[userIndex].lastDoneRoles.findIndex(
           (role) => role.role === roleCode
         );
-        const lastDone = userHistory[userIndex].lastDoneRoles[roleIndex].lastDone;
+        const lastDone =
+          userHistory[userIndex].lastDoneRoles[roleIndex].lastDone;
         if (lastDone > assignedUser.lastDone) {
           assignedUser.name = userHistory[userIndex].name;
-			  assignedUser.lastDone = lastDone;
+          assignedUser.lastDone = lastDone;
         }
       });
 
       // Now assign set the state to assign role to assignedUser
-      selectHandler(role.id, assignedUser.name)
+      selectHandler(role.id, assignedUser.name);
     });
   }
 
@@ -207,11 +208,15 @@ function App() {
     );
   }
 
-	const [poolState, setPoolState] = useState(pool);
-	
-	function selectHandler(roleId, user) {
-		setPoolState((poolState) => poolState.map((role) => role.id === roleId ? { ...role, userSelected: user } : role));
-	 }
+  const [poolState, setPoolState] = useState(pool);
+
+  function selectHandler(roleId, user) {
+    setPoolState((poolState) =>
+      poolState.map((role) =>
+        role.id === roleId ? { ...role, userSelected: user } : role
+      )
+    );
+  }
 
   return (
     <div className="container min-w-full min-h-screen p-4">
@@ -225,8 +230,8 @@ function App() {
                 pool={poolState}
                 setPool={selectHandler}
                 userHistory={userHistory}
-						enabledRoles={enabledRoles}
-						assignHandler={assignRoles}
+                enabledRoles={enabledRoles}
+                assignHandler={assignRoles}
               />
             }
           />
