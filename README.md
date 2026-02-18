@@ -1,70 +1,45 @@
-# Getting Started with Create React App
+# Role Manager
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Role Manager is an open-source project focused on modern **Data Engineering** patterns.
+The app domain (roles and weekly assignments) is used as a realistic data integration scenario where events are ingested, transformed, and processed reliably across disconnected components.
 
-## Available Scripts
+## Project goal
 
-In the project directory, you can run:
+Build and document a production-minded data pipeline that demonstrates:
 
-### `npm start`
+- Python data transformation for complex business rules
+- Message-driven stream processing for high-volume workloads
+- Reliable asynchronous processing with retries and recovery patterns
+- Low-latency state and caching with in-memory storage
+- Operational automation for deployment and maintenance tasks
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## What the project does
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Manages teams, users, roles, and weekly assignments
+- Keeps assignment history and explainability signals
+- Supports both manual assignment and automatic recommendations
+- Adds a pipeline-first architecture to process raw events into durable outputs
 
-### `npm test`
+## Tech stack
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Python**: core transformation and pipeline logic
+- **RabbitMQ**: messaging and asynchronous processing
+- **Redis**: caching, short-lived state, and deduplication support
+- **Bash**: automation scripts for environment setup and operations
+- **Docker**: local containerized environment and service orchestration
+- **Kubernetes (optional extension)**: worker scaling and deployment patterns
 
-### `npm run build`
+## Engineering focus
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- High throughput and low latency
+- Fault tolerance and high availability
+- Dead-letter queue and retry handling
+- Idempotent processing patterns
+- Observability and operational robustness
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Why this project
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+This repository emphasizes integration across systems, reliable data flow, and production-ready engineering decisions.
 
-### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
