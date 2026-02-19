@@ -40,9 +40,9 @@ Benefits:
 - **Docker**: local containerized environment and service orchestration
 - **Kubernetes (optional extension)**: worker scaling and deployment patterns
 
-## Quickstart (target workflow)
+## Quickstart (Phase 1 workflow)
 
-The pipeline and worker services are still being implemented. This section describes the intended developer workflow once the first end-to-end slice is in place.
+Phase 1 now includes a working event ingest path (`POST /events`) and worker runtime (`python -m app.worker`) for queue consumption and durable writes.
 
 1. Clone and install dependencies
    - `npm install`
@@ -55,6 +55,13 @@ The pipeline and worker services are still being implemented. This section descr
    - `cd backend && .\venv\Scripts\python -m app.worker`
 5. Publish an event (example)
    - `curl -X POST http://localhost:8000/events -H "Content-Type: application/json" -d @event.json`
+
+### Local infrastructure
+
+`docker-compose.yml` starts the local dependencies required by the event pipeline:
+- RabbitMQ (broker): `localhost:5672` (management UI: `localhost:15672`)
+- Redis (idempotency keys): `localhost:6379`
+- MongoDB (durable event log + projections): `localhost:27017`
 
 ## Architecture
 
