@@ -7,11 +7,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 
 import aio_pika
-from aio_pika import ExchangeType, IncomingMessage
+from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import ValidationError
 from redis import asyncio as redis_asyncio
@@ -20,8 +21,14 @@ from app.core.config import settings
 from app.schemas.events import EventEnvelope
 
 LOGGER = logging.getLogger("role_manager.worker")
-DLQ_ARGUMENT_KEY = "x-dead-letter-routing-key"
 DLX_ARGUMENT_KEY = "x-dead-letter-exchange"
+TTL_ARGUMENT_KEY = "x-message-ttl"
+X_DEATH_HEADER_KEY = "x-death"
+X_DEATH_COUNT_KEY = "count"
+X_DEATH_QUEUE_KEY = "queue"
+DLQ_REASON_HEADER_KEY = "dlq_reason"
+FAILED_AT_HEADER_KEY = "failed_at"
+ORIGINAL_ROUTING_KEY_HEADER_KEY = "original_routing_key"
 
 
 class EventWorker:
@@ -33,6 +40,7 @@ class EventWorker:
         self._rabbit_connection: aio_pika.abc.AbstractRobustConnection | None = None
         self._rabbit_channel: aio_pika.abc.AbstractRobustChannel | None = None
         self._exchange: aio_pika.abc.AbstractExchange | None = None
+        self._retry_exchange: aio_pika.abc.AbstractExchange | None = None
         self._compute_queue: aio_pika.abc.AbstractQueue | None = None
         self._redis: redis_asyncio.Redis | None = None
         self._mongo_client: AsyncIOMotorClient | None = None
@@ -60,6 +68,11 @@ class EventWorker:
             ExchangeType.TOPIC,
             durable=True,
         )
+        self._retry_exchange = await self._rabbit_channel.declare_exchange(
+            settings.rabbitmq_retry_exchange,
+            ExchangeType.TOPIC,
+            durable=True,
+        )
 
         await self._rabbit_channel.declare_queue(
             settings.rabbitmq_dlq_queue,
@@ -68,12 +81,21 @@ class EventWorker:
         dlq = await self._rabbit_channel.get_queue(settings.rabbitmq_dlq_queue)
         await dlq.bind(self._exchange, routing_key=settings.rabbitmq_dlq_routing_key)
 
+        retry_queue = await self._rabbit_channel.declare_queue(
+            settings.rabbitmq_retry_queue,
+            durable=True,
+            arguments={
+                TTL_ARGUMENT_KEY: settings.rabbitmq_retry_delay_ms,
+                DLX_ARGUMENT_KEY: settings.rabbitmq_exchange,
+            },
+        )
+        await retry_queue.bind(self._retry_exchange, routing_key=settings.rabbitmq_retry_binding_key)
+
         self._compute_queue = await self._rabbit_channel.declare_queue(
             settings.rabbitmq_compute_queue,
             durable=True,
             arguments={
-                DLX_ARGUMENT_KEY: settings.rabbitmq_exchange,
-                DLQ_ARGUMENT_KEY: settings.rabbitmq_dlq_routing_key,
+                DLX_ARGUMENT_KEY: settings.rabbitmq_retry_exchange,
             },
         )
         await self._compute_queue.bind(
@@ -101,23 +123,56 @@ class EventWorker:
         await self._stop_event.wait()
 
     async def _process_message(self, message: IncomingMessage) -> None:
-        async with message.process(requeue=False):
-            event = self._decode_message(message)
+        retry_count = self._get_retry_count(message)
+        if retry_count >= settings.worker_max_retry_attempts:
+            await self._move_to_dlq_or_retry(
+                message,
+                (
+                    f"retry_limit_exceeded: "
+                    f"retry_count={retry_count} max={settings.worker_max_retry_attempts}"
+                ),
+            )
+            LOGGER.warning(
+                "Moved message_id=%s to DLQ after retry limit",
+                message.message_id,
+            )
+            return
 
+        try:
+            event = self._decode_message(message)
+        except ValueError as exc:
+            await self._move_to_dlq_or_retry(message, str(exc))
+            LOGGER.warning(
+                "Moved invalid message_id=%s to DLQ: %s",
+                message.message_id,
+                exc,
+            )
+            return
+
+        try:
             if await self._already_processed(event.event_id):
                 LOGGER.info("Skipping duplicate event_id=%s", event.event_id)
+                await message.ack()
                 return
 
             processed_at = datetime.now(timezone.utc)
             await self._persist_event_log(event, message, processed_at)
             await self._apply_projection(event, processed_at)
             await self._mark_processed(event.event_id)
+            await message.ack()
             LOGGER.info(
                 "Processed event_id=%s event_type=%s team_id=%s",
                 event.event_id,
                 event.event_type,
                 event.team_id,
             )
+        except Exception:
+            LOGGER.exception(
+                "Processing failed for message_id=%s event_id=%s, routing to retry",
+                message.message_id,
+                event.event_id,
+            )
+            await message.reject(requeue=False)
 
     def _decode_message(self, message: IncomingMessage) -> EventEnvelope:
         try:
@@ -200,6 +255,60 @@ class EventWorker:
             {"$set": projection},
             upsert=True,
         )
+
+    def _get_retry_count(self, message: IncomingMessage) -> int:
+        headers = message.headers or {}
+        x_death = headers.get(X_DEATH_HEADER_KEY)
+        if not isinstance(x_death, list):
+            return 0
+
+        for death_entry in x_death:
+            if not isinstance(death_entry, Mapping):
+                continue
+            if death_entry.get(X_DEATH_QUEUE_KEY) != settings.rabbitmq_compute_queue:
+                continue
+
+            count = death_entry.get(X_DEATH_COUNT_KEY, 0)
+            try:
+                return int(count)
+            except (TypeError, ValueError):
+                return 0
+
+        return 0
+
+    async def _move_to_dlq_or_retry(self, message: IncomingMessage, reason: str) -> None:
+        try:
+            await self._publish_to_dlq(message, reason)
+            await message.ack()
+        except Exception:
+            LOGGER.exception(
+                "Failed to move message_id=%s to DLQ, routing to retry",
+                message.message_id,
+            )
+            await message.reject(requeue=False)
+
+    async def _publish_to_dlq(self, message: IncomingMessage, reason: str) -> None:
+        if self._exchange is None:
+            raise RuntimeError("RabbitMQ exchange is not initialized")
+
+        headers = dict(message.headers or {})
+        headers[DLQ_REASON_HEADER_KEY] = reason
+        headers[FAILED_AT_HEADER_KEY] = datetime.now(timezone.utc).isoformat()
+        headers[ORIGINAL_ROUTING_KEY_HEADER_KEY] = message.routing_key
+
+        dlq_message = Message(
+            body=message.body,
+            content_type=message.content_type or "application/json",
+            content_encoding=message.content_encoding,
+            delivery_mode=DeliveryMode.PERSISTENT,
+            message_id=message.message_id,
+            correlation_id=message.correlation_id,
+            timestamp=datetime.now(timezone.utc),
+            type=message.type,
+            app_id=message.app_id,
+            headers=headers,
+        )
+        await self._exchange.publish(dlq_message, routing_key=settings.rabbitmq_dlq_routing_key)
 
     async def shutdown(self) -> None:
         self._stop_event.set()

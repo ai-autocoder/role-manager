@@ -38,8 +38,12 @@ class Settings(BaseSettings):
     rabbitmq_password: str = "guest"
     rabbitmq_vhost: str = "/"
     rabbitmq_exchange: str = "role_manager.events.topic"
+    rabbitmq_retry_exchange: str = "role_manager.events.retry"
     rabbitmq_compute_queue: str = "role_manager.assignments.compute"
     rabbitmq_compute_binding_key: str = "#"
+    rabbitmq_retry_queue: str = "role_manager.assignments.retry"
+    rabbitmq_retry_binding_key: str = "#"
+    rabbitmq_retry_delay_ms: int = 30000
     rabbitmq_dlq_queue: str = "role_manager.assignments.dlq"
     rabbitmq_dlq_routing_key: str = "events.dlq"
     rabbitmq_connect_timeout_seconds: int = 5
@@ -57,6 +61,7 @@ class Settings(BaseSettings):
 
     # Worker
     worker_prefetch_count: int = 10
+    worker_max_retry_attempts: int = 3
 
     # Database
     database_host: str = "localhost"

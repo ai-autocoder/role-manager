@@ -13,8 +13,8 @@ from aio_pika import DeliveryMode, ExchangeType, Message
 from app.core.config import settings
 from app.schemas.events import EventEnvelope
 
-DLQ_ARGUMENT_KEY: Final[str] = "x-dead-letter-routing-key"
 DLX_ARGUMENT_KEY: Final[str] = "x-dead-letter-exchange"
+TTL_ARGUMENT_KEY: Final[str] = "x-message-ttl"
 
 
 class EventPublishError(RuntimeError):
@@ -100,12 +100,26 @@ class RabbitMQPublisher:
         dlq = await self._channel.get_queue(settings.rabbitmq_dlq_queue)
         await dlq.bind(self._exchange, routing_key=settings.rabbitmq_dlq_routing_key)
 
+        retry_exchange = await self._channel.declare_exchange(
+            settings.rabbitmq_retry_exchange,
+            ExchangeType.TOPIC,
+            durable=True,
+        )
+        retry_queue = await self._channel.declare_queue(
+            settings.rabbitmq_retry_queue,
+            durable=True,
+            arguments={
+                TTL_ARGUMENT_KEY: settings.rabbitmq_retry_delay_ms,
+                DLX_ARGUMENT_KEY: settings.rabbitmq_exchange,
+            },
+        )
+        await retry_queue.bind(retry_exchange, routing_key=settings.rabbitmq_retry_binding_key)
+
         queue = await self._channel.declare_queue(
             settings.rabbitmq_compute_queue,
             durable=True,
             arguments={
-                DLX_ARGUMENT_KEY: settings.rabbitmq_exchange,
-                DLQ_ARGUMENT_KEY: settings.rabbitmq_dlq_routing_key,
+                DLX_ARGUMENT_KEY: settings.rabbitmq_retry_exchange,
             },
         )
         await queue.bind(self._exchange, routing_key=settings.rabbitmq_compute_binding_key)
