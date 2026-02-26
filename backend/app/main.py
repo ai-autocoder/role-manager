@@ -11,9 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import check_database_connection
 from app.schemas.events import (
+    DLQReplayResponse,
     EventIngestionRequest,
     EventIngestionResponse,
     build_event_envelope,
+)
+from app.services.dlq_replay import (
+    DLQReplayError,
+    RabbitMQDLQReplayService,
+    get_dlq_replay_service,
 )
 from app.services.messaging import EventPublishError, RabbitMQPublisher, get_event_publisher
 
@@ -100,3 +106,23 @@ async def ingest_event(
         routing_key=routing_key,
         accepted_at=datetime.now(timezone.utc),
     )
+
+
+@app.post(
+    "/events/dlq/replay",
+    response_model=DLQReplayResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def replay_next_dlq_event(
+    replay_service: RabbitMQDLQReplayService = Depends(get_dlq_replay_service),
+):
+    """
+    Replay one message from DLQ back to the main event exchange.
+    """
+    try:
+        return await replay_service.replay_next()
+    except DLQReplayError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to replay DLQ message: {exc}",
+        ) from exc

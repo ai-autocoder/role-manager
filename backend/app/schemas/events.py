@@ -93,6 +93,18 @@ class EventIngestionResponse(BaseModel):
     accepted_at: datetime
 
 
+class DLQReplayResponse(BaseModel):
+    """
+    Response body for dead-letter queue replay attempts.
+    """
+
+    status: Literal["replayed", "empty"]
+    message_id: str | None = None
+    event_id: str | None = None
+    routing_key: str | None = None
+    replayed_at: datetime | None = None
+
+
 def build_event_envelope(
     request: EventIngestionRequest,
     *,
