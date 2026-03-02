@@ -3,6 +3,7 @@ FastAPI application entry point.
 """
 
 from datetime import datetime, timezone
+import logging
 
 from fastapi import FastAPI
 from fastapi import Depends, HTTPException, status
@@ -22,6 +23,13 @@ from app.services.dlq_replay import (
     get_dlq_replay_service,
 )
 from app.services.messaging import EventPublishError, RabbitMQPublisher, get_event_publisher
+from app.services.replay_audit import (
+    MongoReplayAuditService,
+    ReplayAuditError,
+    get_replay_audit_service,
+)
+
+LOGGER = logging.getLogger("role_manager.api")
 
 # Create FastAPI application
 app = FastAPI(
@@ -115,14 +123,49 @@ async def ingest_event(
 )
 async def replay_next_dlq_event(
     replay_service: RabbitMQDLQReplayService = Depends(get_dlq_replay_service),
+    audit_service: MongoReplayAuditService = Depends(get_replay_audit_service),
 ):
     """
     Replay one message from DLQ back to the main event exchange.
     """
     try:
-        return await replay_service.replay_next()
+        replay_response = await replay_service.replay_next()
+        await _record_replay_audit(
+            audit_service,
+            outcome=replay_response.status,
+            message_id=replay_response.message_id,
+            event_id=replay_response.event_id,
+            routing_key=replay_response.routing_key,
+        )
+        return replay_response
     except DLQReplayError as exc:
+        await _record_replay_audit(
+            audit_service,
+            outcome="failed",
+            error=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Unable to replay DLQ message: {exc}",
         ) from exc
+
+
+async def _record_replay_audit(
+    audit_service: MongoReplayAuditService,
+    *,
+    outcome: str,
+    message_id: str | None = None,
+    event_id: str | None = None,
+    routing_key: str | None = None,
+    error: str | None = None,
+) -> None:
+    try:
+        await audit_service.record_attempt(
+            outcome=outcome,
+            message_id=message_id,
+            event_id=event_id,
+            routing_key=routing_key,
+            error=error,
+        )
+    except ReplayAuditError as audit_exc:
+        LOGGER.warning("Replay audit write failed: %s", audit_exc)
