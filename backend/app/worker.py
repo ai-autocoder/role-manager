@@ -18,7 +18,7 @@ from pydantic import ValidationError
 from redis import asyncio as redis_asyncio
 
 from app.core.config import settings
-from app.schemas.events import EventEnvelope
+from app.schemas.events import AssignmentRecommendationsRequestedPayload, EventEnvelope
 
 LOGGER = logging.getLogger("role_manager.worker")
 DLX_ARGUMENT_KEY = "x-dead-letter-exchange"
@@ -29,6 +29,7 @@ X_DEATH_QUEUE_KEY = "queue"
 DLQ_REASON_HEADER_KEY = "dlq_reason"
 FAILED_AT_HEADER_KEY = "failed_at"
 ORIGINAL_ROUTING_KEY_HEADER_KEY = "original_routing_key"
+ASSIGNMENT_RECOMMENDATIONS_EVENT_TYPE = "assignment.recommendations.requested"
 
 
 class EventWorker:
@@ -112,6 +113,11 @@ class EventWorker:
             [("team_id", 1), ("user_id", 1), ("week_start", 1)],
             unique=True,
             name="availability_team_user_week_unique",
+        )
+        await self._mongo_db.assignment_recommendations.create_index(
+            [("team_id", 1), ("week_start", 1), ("role_code", 1)],
+            unique=True,
+            name="assignment_recommendations_team_week_role_unique",
         )
 
     async def _consume_loop(self) -> None:
@@ -222,8 +228,21 @@ class EventWorker:
         if self._mongo_db is None:
             raise RuntimeError("MongoDB is not initialized")
 
-        if event.event_type != "availability.updated":
+        if event.event_type == "availability.updated":
+            await self._apply_availability_projection(event, processed_at)
             return
+
+        if event.event_type == ASSIGNMENT_RECOMMENDATIONS_EVENT_TYPE:
+            await self._apply_assignment_recommendations(event, processed_at)
+            return
+
+    async def _apply_availability_projection(
+        self,
+        event: EventEnvelope,
+        processed_at: datetime,
+    ) -> None:
+        if self._mongo_db is None:
+            raise RuntimeError("MongoDB is not initialized")
 
         user_id = event.payload.get("user_id")
         week_start = event.payload.get("week_start")
@@ -255,6 +274,86 @@ class EventWorker:
             {"$set": projection},
             upsert=True,
         )
+
+    async def _apply_assignment_recommendations(
+        self,
+        event: EventEnvelope,
+        processed_at: datetime,
+    ) -> None:
+        if self._mongo_db is None:
+            raise RuntimeError("MongoDB is not initialized")
+
+        payload = AssignmentRecommendationsRequestedPayload.model_validate(event.payload)
+        recommendations = self._build_assignment_recommendations(
+            event.team_id,
+            payload,
+            event.event_id,
+            processed_at,
+        )
+
+        for recommendation in recommendations:
+            await self._mongo_db.assignment_recommendations.update_one(
+                {
+                    "team_id": recommendation["team_id"],
+                    "week_start": recommendation["week_start"],
+                    "role_code": recommendation["role_code"],
+                },
+                {"$set": recommendation},
+                upsert=True,
+            )
+
+    def _build_assignment_recommendations(
+        self,
+        team_id: str,
+        payload: AssignmentRecommendationsRequestedPayload,
+        event_id: str,
+        generated_at: datetime,
+    ) -> list[dict[str, Any]]:
+        recommendations: list[dict[str, Any]] = []
+
+        for role in payload.roles:
+            scored_candidates = [
+                {
+                    "user_id": candidate.user_id,
+                    "score": (candidate.last_done * candidate.motivation_factor)
+                    + candidate.experience_factor,
+                    "score_breakdown": {
+                        "last_done": candidate.last_done,
+                        "motivation_factor": candidate.motivation_factor,
+                        "experience_factor": candidate.experience_factor,
+                    },
+                }
+                for candidate in role.candidates
+            ]
+            scored_candidates.sort(
+                key=lambda candidate: (
+                    -candidate["score"],
+                    -candidate["score_breakdown"]["last_done"],
+                    -candidate["score_breakdown"]["motivation_factor"],
+                    -candidate["score_breakdown"]["experience_factor"],
+                    candidate["user_id"],
+                )
+            )
+
+            selected_candidate = scored_candidates[0]
+            recommendations.append(
+                {
+                    "team_id": team_id,
+                    "week_start": payload.week_start.isoformat(),
+                    "role_code": role.role_code,
+                    "recommended_user_id": selected_candidate["user_id"],
+                    "score": selected_candidate["score"],
+                    "score_breakdown": selected_candidate["score_breakdown"],
+                    "event_ids": [event_id],
+                    "generated_at": generated_at,
+                    "explanation": (
+                        "Highest fair score among submitted candidates. "
+                        "Ties resolve deterministically by score inputs and user_id."
+                    ),
+                }
+            )
+
+        return recommendations
 
     def _get_retry_count(self, message: IncomingMessage) -> int:
         headers = message.headers or {}

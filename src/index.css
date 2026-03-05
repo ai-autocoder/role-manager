@@ -8,6 +8,9 @@ body {
 }
 
 .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 2rem;
   width: 2rem;
 }

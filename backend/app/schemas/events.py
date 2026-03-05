@@ -2,7 +2,7 @@
 Event contracts for ingestion and worker processing.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -78,6 +78,57 @@ class EventEnvelope(BaseModel):
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+
+class RecommendationCandidateInput(BaseModel):
+    """
+    Candidate score inputs for a single role recommendation.
+    """
+
+    user_id: str = Field(min_length=1, max_length=128)
+    last_done: int = Field(ge=0)
+    motivation_factor: float = Field(default=1.0, gt=0)
+    experience_factor: float = Field(default=1.0)
+
+
+class RecommendationRoleInput(BaseModel):
+    """
+    Input candidates for one role in a recommendation request.
+    """
+
+    role_code: str = Field(min_length=1, max_length=128)
+    candidates: list[RecommendationCandidateInput] = Field(min_length=1)
+
+    @field_validator("candidates")
+    @classmethod
+    def validate_unique_candidate_users(
+        cls,
+        value: list[RecommendationCandidateInput],
+    ) -> list[RecommendationCandidateInput]:
+        user_ids = [candidate.user_id for candidate in value]
+        if len(user_ids) != len(set(user_ids)):
+            raise ValueError("Each role must contain unique candidate user_id values")
+        return value
+
+
+class AssignmentRecommendationsRequestedPayload(BaseModel):
+    """
+    Worker input contract for generating recommendation documents.
+    """
+
+    week_start: date
+    roles: list[RecommendationRoleInput] = Field(min_length=1)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_unique_role_codes(
+        cls,
+        value: list[RecommendationRoleInput],
+    ) -> list[RecommendationRoleInput]:
+        role_codes = [role.role_code for role in value]
+        if len(role_codes) != len(set(role_codes)):
+            raise ValueError("Recommendation request payload must contain unique role_code values")
+        return value
 
 
 class EventIngestionResponse(BaseModel):

@@ -23,19 +23,19 @@ function App() {
 			volunteer: "",
 			rolesAvailable: [
 				{
-					roleCode: "gar",
+					roleCode: "role_1",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "hun",
+					roleCode: "role_2",
 					motivationFactor: 1,
 				},
 			],
@@ -47,15 +47,15 @@ function App() {
 			volunteer: "",
 			rolesAvailable: [
 				{
-					roleCode: "gar",
+					roleCode: "role_1",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 			],
@@ -65,19 +65,19 @@ function App() {
 			name: "user3",
 			rolesAvailable: [
 				{
-					roleCode: "gar",
+					roleCode: "role_1",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "hun",
+					roleCode: "role_2",
 					motivationFactor: 1,
 				},
 			],
@@ -89,15 +89,15 @@ function App() {
 			name: "user4",
 			rolesAvailable: [
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "hun",
+					roleCode: "role_2",
 					motivationFactor: 1,
 				},
 			],
@@ -109,15 +109,15 @@ function App() {
 			name: "user5",
 			rolesAvailable: [
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "rep",
+					roleCode: "role_6",
 					motivationFactor: 1,
 				},
 			],
@@ -129,19 +129,19 @@ function App() {
 			name: "user6",
 			rolesAvailable: [
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "gar",
+					roleCode: "role_1",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "mas",
+					roleCode: "role_3",
 					motivationFactor: 1,
 				},
 			],
@@ -153,19 +153,19 @@ function App() {
 			name: "user7",
 			rolesAvailable: [
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "hun",
+					roleCode: "role_2",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "gar",
+					roleCode: "role_1",
 					motivationFactor: 1,
 				},
 			],
@@ -177,15 +177,15 @@ function App() {
 			name: "user8",
 			rolesAvailable: [
 				{
-					roleCode: "revT1",
+					roleCode: "role_4",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "revT2",
+					roleCode: "role_5",
 					motivationFactor: 1,
 				},
 				{
-					roleCode: "mas",
+					roleCode: "role_3",
 					motivationFactor: 1,
 				},
 			],
@@ -198,45 +198,45 @@ function App() {
 		{
 			weekEnding: "2022-10-16",
 			userRoles: [
-				{ role: "gar", user: "user5" },
-				{ role: "hun", user: "user6" },
-				{ role: "mas", user: "user1" },
-				{ role: "revT1", user: "user2" },
-				{ role: "revT2", user: "user3" },
-				{ role: "rep", user: "user4" },
+				{ role: "role_1", user: "user5" },
+				{ role: "role_2", user: "user6" },
+				{ role: "role_3", user: "user1" },
+				{ role: "role_4", user: "user2" },
+				{ role: "role_5", user: "user3" },
+				{ role: "role_6", user: "user4" },
 			],
 		},
 		{
 			weekEnding: "2022-10-23",
 			userRoles: [
-				{ role: "gar", user: "user6" },
-				{ role: "hun", user: "user1" },
-				{ role: "mas", user: "user2" },
-				{ role: "revT1", user: "user3" },
-				{ role: "revT2", user: "user4" },
-				{ role: "rep", user: "user5" },
+				{ role: "role_1", user: "user6" },
+				{ role: "role_2", user: "user1" },
+				{ role: "role_3", user: "user2" },
+				{ role: "role_4", user: "user3" },
+				{ role: "role_5", user: "user4" },
+				{ role: "role_6", user: "user5" },
 			],
 		},
 		{
 			weekEnding: "2022-10-30",
 			userRoles: [
-				{ role: "gar", user: "user1" },
-				{ role: "hun", user: "user2" },
-				{ role: "mas", user: "user3" },
-				{ role: "revT1", user: "user4" },
-				{ role: "revT2", user: "user5" },
-				{ role: "rep", user: "user6" },
+				{ role: "role_1", user: "user1" },
+				{ role: "role_2", user: "user2" },
+				{ role: "role_3", user: "user3" },
+				{ role: "role_4", user: "user4" },
+				{ role: "role_5", user: "user5" },
+				{ role: "role_6", user: "user6" },
 			],
 		},
 		{
 			weekEnding: "2022-11-06",
 			userRoles: [
-				{ role: "gar", user: "user2" },
-				{ role: "hun", user: "user3" },
-				{ role: "mas", user: "user4" },
-				{ role: "revT1", user: "user5" },
-				{ role: "revT2", user: "user6" },
-				{ role: "rep", user: "user1" },
+				{ role: "role_1", user: "user2" },
+				{ role: "role_2", user: "user3" },
+				{ role: "role_3", user: "user4" },
+				{ role: "role_4", user: "user5" },
+				{ role: "role_5", user: "user6" },
+				{ role: "role_6", user: "user1" },
 			],
 		},
 	];
