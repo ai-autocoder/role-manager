@@ -185,7 +185,8 @@ def test_build_assignment_recommendations_prefers_highest_score_and_is_determini
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
             "explanation": (
-                "Highest fair score among submitted candidates. "
+                "Highest fair score among submitted candidates."
+                " "
                 "Ties resolve deterministically by score inputs and user_id."
             ),
         },
@@ -193,6 +194,157 @@ def test_build_assignment_recommendations_prefers_highest_score_and_is_determini
             "team_id": "team_123",
             "week_start": "2026-02-23",
             "role_code": "role_2",
+            "recommended_user_id": "user-z",
+            "score": 5.0,
+            "score_breakdown": {
+                "last_done": 4,
+                "motivation_factor": 1.0,
+                "experience_factor": 1.0,
+            },
+            "event_ids": ["evt-123"],
+            "generated_at": processed_at,
+            "explanation": (
+                "Highest fair score among submitted candidates after deterministic "
+                "conflict resolution for the weekly role pool. "
+                "Ties resolve deterministically by score inputs and user_id."
+            ),
+        },
+    ]
+
+
+def test_build_assignment_recommendations_prioritizes_most_constrained_role_for_shared_users() -> None:
+    worker = EventWorker()
+    payload = AssignmentRecommendationsRequestedPayload.model_validate(
+        {
+            "week_start": "2026-02-23",
+            "roles": [
+                {
+                    "role_code": "role_flexible",
+                    "candidates": [
+                        {
+                            "user_id": "user-a",
+                            "last_done": 8,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                        },
+                        {
+                            "user_id": "user-b",
+                            "last_done": 2,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                        },
+                    ],
+                },
+                {
+                    "role_code": "role_constrained",
+                    "candidates": [
+                        {
+                            "user_id": "user-a",
+                            "last_done": 1,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+    processed_at = datetime(2026, 2, 18, 10, 46, 22, tzinfo=timezone.utc)
+
+    recommendations = worker._build_assignment_recommendations(
+        "team_123",
+        payload,
+        "evt-123",
+        processed_at,
+    )
+
+    assert recommendations == [
+        {
+            "team_id": "team_123",
+            "week_start": "2026-02-23",
+            "role_code": "role_flexible",
+            "recommended_user_id": "user-b",
+            "score": 3.0,
+            "score_breakdown": {
+                "last_done": 2,
+                "motivation_factor": 1.0,
+                "experience_factor": 1.0,
+            },
+            "event_ids": ["evt-123"],
+            "generated_at": processed_at,
+            "explanation": (
+                "Highest fair score among submitted candidates after deterministic "
+                "conflict resolution for the weekly role pool. "
+                "Ties resolve deterministically by score inputs and user_id."
+            ),
+        },
+        {
+            "team_id": "team_123",
+            "week_start": "2026-02-23",
+            "role_code": "role_constrained",
+            "recommended_user_id": "user-a",
+            "score": 2.0,
+            "score_breakdown": {
+                "last_done": 1,
+                "motivation_factor": 1.0,
+                "experience_factor": 1.0,
+            },
+            "event_ids": ["evt-123"],
+            "generated_at": processed_at,
+            "explanation": (
+                "Highest fair score among submitted candidates."
+                " "
+                "Ties resolve deterministically by score inputs and user_id."
+            ),
+        },
+    ]
+
+
+def test_build_assignment_recommendations_marks_role_unassigned_when_no_unique_candidate_remains() -> None:
+    worker = EventWorker()
+    payload = AssignmentRecommendationsRequestedPayload.model_validate(
+        {
+            "week_start": "2026-02-23",
+            "roles": [
+                {
+                    "role_code": "role_a",
+                    "candidates": [
+                        {
+                            "user_id": "user-a",
+                            "last_done": 4,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                        }
+                    ],
+                },
+                {
+                    "role_code": "role_b",
+                    "candidates": [
+                        {
+                            "user_id": "user-a",
+                            "last_done": 3,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+    processed_at = datetime(2026, 2, 18, 10, 46, 22, tzinfo=timezone.utc)
+
+    recommendations = worker._build_assignment_recommendations(
+        "team_123",
+        payload,
+        "evt-123",
+        processed_at,
+    )
+
+    assert recommendations == [
+        {
+            "team_id": "team_123",
+            "week_start": "2026-02-23",
+            "role_code": "role_a",
             "recommended_user_id": "user-a",
             "score": 5.0,
             "score_breakdown": {
@@ -203,8 +355,23 @@ def test_build_assignment_recommendations_prefers_highest_score_and_is_determini
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
             "explanation": (
-                "Highest fair score among submitted candidates. "
+                "Highest fair score among submitted candidates."
+                " "
                 "Ties resolve deterministically by score inputs and user_id."
+            ),
+        },
+        {
+            "team_id": "team_123",
+            "week_start": "2026-02-23",
+            "role_code": "role_b",
+            "recommended_user_id": None,
+            "score": None,
+            "score_breakdown": None,
+            "event_ids": ["evt-123"],
+            "generated_at": processed_at,
+            "explanation": (
+                "No unique candidate remained after deterministic conflict resolution "
+                "for this weekly recommendation request."
             ),
         },
     ]

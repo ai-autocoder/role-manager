@@ -18,7 +18,11 @@ from pydantic import ValidationError
 from redis import asyncio as redis_asyncio
 
 from app.core.config import settings
-from app.schemas.events import AssignmentRecommendationsRequestedPayload, EventEnvelope
+from app.schemas.events import (
+    AssignmentRecommendationsRequestedPayload,
+    EventEnvelope,
+    RecommendationCandidateInput,
+)
 
 LOGGER = logging.getLogger("role_manager.worker")
 DLX_ARGUMENT_KEY = "x-dead-letter-exchange"
@@ -309,51 +313,112 @@ class EventWorker:
         event_id: str,
         generated_at: datetime,
     ) -> list[dict[str, Any]]:
-        recommendations: list[dict[str, Any]] = []
+        role_entries: list[dict[str, Any]] = []
 
-        for role in payload.roles:
-            scored_candidates = [
+        for input_index, role in enumerate(payload.roles):
+            scored_candidates = self._score_role_candidates(role.candidates)
+            role_entries.append(
                 {
-                    "user_id": candidate.user_id,
-                    "score": (candidate.last_done * candidate.motivation_factor)
-                    + candidate.experience_factor,
-                    "score_breakdown": {
-                        "last_done": candidate.last_done,
-                        "motivation_factor": candidate.motivation_factor,
-                        "experience_factor": candidate.experience_factor,
-                    },
+                    "input_index": input_index,
+                    "role_code": role.role_code,
+                    "scored_candidates": scored_candidates,
+                    "candidate_count": len(scored_candidates),
+                    "top_score": scored_candidates[0]["score"],
                 }
-                for candidate in role.candidates
-            ]
-            scored_candidates.sort(
-                key=lambda candidate: (
-                    -candidate["score"],
-                    -candidate["score_breakdown"]["last_done"],
-                    -candidate["score_breakdown"]["motivation_factor"],
-                    -candidate["score_breakdown"]["experience_factor"],
-                    candidate["user_id"],
-                )
             )
 
-            selected_candidate = scored_candidates[0]
-            recommendations.append(
-                {
+        resolution_order = sorted(
+            role_entries,
+            key=lambda role_entry: (
+                role_entry["candidate_count"],
+                -role_entry["top_score"],
+                role_entry["role_code"],
+            ),
+        )
+
+        assigned_user_ids: set[str] = set()
+        recommendations_by_role: dict[str, dict[str, Any]] = {}
+
+        for role_entry in resolution_order:
+            available_candidates = [
+                candidate
+                for candidate in role_entry["scored_candidates"]
+                if candidate["user_id"] not in assigned_user_ids
+            ]
+
+            if not available_candidates:
+                recommendations_by_role[role_entry["role_code"]] = {
                     "team_id": team_id,
                     "week_start": payload.week_start.isoformat(),
-                    "role_code": role.role_code,
-                    "recommended_user_id": selected_candidate["user_id"],
-                    "score": selected_candidate["score"],
-                    "score_breakdown": selected_candidate["score_breakdown"],
+                    "role_code": role_entry["role_code"],
+                    "recommended_user_id": None,
+                    "score": None,
+                    "score_breakdown": None,
                     "event_ids": [event_id],
                     "generated_at": generated_at,
                     "explanation": (
-                        "Highest fair score among submitted candidates. "
-                        "Ties resolve deterministically by score inputs and user_id."
+                        "No unique candidate remained after deterministic conflict resolution "
+                        "for this weekly recommendation request."
                     ),
                 }
-            )
+                continue
 
-        return recommendations
+            selected_candidate = available_candidates[0]
+            assigned_user_ids.add(selected_candidate["user_id"])
+            conflict_resolved = selected_candidate != role_entry["scored_candidates"][0]
+
+            explanation = (
+                "Highest fair score among submitted candidates after deterministic "
+                "conflict resolution for the weekly role pool."
+                if conflict_resolved
+                else "Highest fair score among submitted candidates."
+            )
+            explanation = f"{explanation} Ties resolve deterministically by score inputs and user_id."
+
+            recommendations_by_role[role_entry["role_code"]] = {
+                "team_id": team_id,
+                "week_start": payload.week_start.isoformat(),
+                "role_code": role_entry["role_code"],
+                "recommended_user_id": selected_candidate["user_id"],
+                "score": selected_candidate["score"],
+                "score_breakdown": selected_candidate["score_breakdown"],
+                "event_ids": [event_id],
+                "generated_at": generated_at,
+                "explanation": explanation,
+            }
+
+        return [
+            recommendations_by_role[role.role_code]
+            for role in payload.roles
+        ]
+
+    def _score_role_candidates(
+        self,
+        candidates: list[RecommendationCandidateInput],
+    ) -> list[dict[str, Any]]:
+        scored_candidates = [
+            {
+                "user_id": candidate.user_id,
+                "score": (candidate.last_done * candidate.motivation_factor)
+                + candidate.experience_factor,
+                "score_breakdown": {
+                    "last_done": candidate.last_done,
+                    "motivation_factor": candidate.motivation_factor,
+                    "experience_factor": candidate.experience_factor,
+                },
+            }
+            for candidate in candidates
+        ]
+        scored_candidates.sort(
+            key=lambda candidate: (
+                -candidate["score"],
+                -candidate["score_breakdown"]["last_done"],
+                -candidate["score_breakdown"]["motivation_factor"],
+                -candidate["score_breakdown"]["experience_factor"],
+                candidate["user_id"],
+            )
+        )
+        return scored_candidates
 
     def _get_retry_count(self, message: IncomingMessage) -> int:
         headers = message.headers or {}
