@@ -19,6 +19,7 @@ from redis import asyncio as redis_asyncio
 
 from app.core.config import settings
 from app.schemas.events import (
+    AssignmentHistoryFinalizedPayload,
     AssignmentRecommendationsRequestedPayload,
     EventEnvelope,
     RecommendationCandidateInput,
@@ -34,6 +35,7 @@ DLQ_REASON_HEADER_KEY = "dlq_reason"
 FAILED_AT_HEADER_KEY = "failed_at"
 ORIGINAL_ROUTING_KEY_HEADER_KEY = "original_routing_key"
 ASSIGNMENT_RECOMMENDATIONS_EVENT_TYPE = "assignment.recommendations.requested"
+ASSIGNMENT_HISTORY_FINALIZED_EVENT_TYPE = "assignment.history.finalized"
 
 
 class EventWorker:
@@ -122,6 +124,11 @@ class EventWorker:
             [("team_id", 1), ("week_start", 1), ("role_code", 1)],
             unique=True,
             name="assignment_recommendations_team_week_role_unique",
+        )
+        await self._mongo_db.assignment_history.create_index(
+            [("team_id", 1), ("week_start", 1)],
+            unique=True,
+            name="assignment_history_team_week_unique",
         )
 
     async def _consume_loop(self) -> None:
@@ -240,6 +247,10 @@ class EventWorker:
             await self._apply_assignment_recommendations(event, processed_at)
             return
 
+        if event.event_type == ASSIGNMENT_HISTORY_FINALIZED_EVENT_TYPE:
+            await self._apply_assignment_history(event, processed_at)
+            return
+
     async def _apply_availability_projection(
         self,
         event: EventEnvelope,
@@ -305,6 +316,41 @@ class EventWorker:
                 {"$set": recommendation},
                 upsert=True,
             )
+
+    async def _apply_assignment_history(
+        self,
+        event: EventEnvelope,
+        processed_at: datetime,
+    ) -> None:
+        if self._mongo_db is None:
+            raise RuntimeError("MongoDB is not initialized")
+
+        payload = AssignmentHistoryFinalizedPayload.model_validate(event.payload)
+
+        history_doc = {
+            "team_id": event.team_id,
+            "week_start": payload.week_start.isoformat(),
+            "assignments": [
+                {
+                    "role_code": a.role_code,
+                    "user_id": a.user_id,
+                    "source": a.source,
+                }
+                for a in payload.assignments
+            ],
+            "finalized_by": payload.finalized_by,
+            "finalized_at": processed_at,
+            "source_event_ids": [event.event_id],
+        }
+
+        await self._mongo_db.assignment_history.update_one(
+            {
+                "team_id": event.team_id,
+                "week_start": payload.week_start.isoformat(),
+            },
+            {"$set": history_doc},
+            upsert=True,
+        )
 
     def _build_assignment_recommendations(
         self,

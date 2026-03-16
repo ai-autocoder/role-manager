@@ -131,6 +131,34 @@ class AssignmentRecommendationsRequestedPayload(BaseModel):
         return value
 
 
+class AssignmentInput(BaseModel):
+    """
+    Input for a single role assignment within a finalized week.
+    """
+
+    role_code: str = Field(min_length=1, max_length=128)
+    user_id: str = Field(min_length=1, max_length=128)
+    source: Literal["auto", "manual_override"]
+
+
+class AssignmentHistoryFinalizedPayload(BaseModel):
+    """
+    Worker input contract for persisting a weekly assignment history entry.
+    """
+
+    week_start: date
+    assignments: list[AssignmentInput]
+    finalized_by: str = Field(min_length=1, max_length=128)
+
+    @field_validator("assignments")
+    @classmethod
+    def validate_unique_role_codes(cls, value: list[AssignmentInput]) -> list[AssignmentInput]:
+        role_codes = [assignment.role_code for assignment in value]
+        if len(role_codes) != len(set(role_codes)):
+            raise ValueError("History finalization payload must contain unique role_code values")
+        return value
+
+
 class EventIngestionResponse(BaseModel):
     """
     Response body for accepted events.

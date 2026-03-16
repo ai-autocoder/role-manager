@@ -1,6 +1,7 @@
 from pydantic import ValidationError
 
 from app.schemas.events import (
+    AssignmentHistoryFinalizedPayload,
     AssignmentRecommendationsRequestedPayload,
     EventIngestionRequest,
     build_event_envelope,
@@ -52,6 +53,24 @@ def test_assignment_recommendations_payload_rejects_duplicate_role_codes() -> No
                         "candidates": [{"user_id": "user_2", "last_done": 4}],
                     },
                 ],
+            }
+        )
+    except ValidationError as exc:
+        assert "unique role_code" in str(exc)
+    else:  # pragma: no cover - defensive
+        raise AssertionError("Expected ValidationError for duplicate role_code values")
+
+
+def test_assignment_history_finalized_payload_rejects_duplicate_role_codes() -> None:
+    try:
+        AssignmentHistoryFinalizedPayload.model_validate(
+            {
+                "week_start": "2026-02-23",
+                "assignments": [
+                    {"role_code": "role_1", "user_id": "user_1", "source": "auto"},
+                    {"role_code": "role_1", "user_id": "user_2", "source": "manual_override"},
+                ],
+                "finalized_by": "admin",
             }
         )
     except ValidationError as exc:

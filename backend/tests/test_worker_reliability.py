@@ -36,6 +36,7 @@ class FakeMongoDatabase:
         self.event_log = FakeCollection()
         self.availability = FakeCollection()
         self.assignment_recommendations = FakeCollection()
+        self.assignment_history = FakeCollection()
 
 
 def test_get_retry_count_reads_compute_queue_x_death_count() -> None:
@@ -447,3 +448,70 @@ async def test_apply_projection_persists_assignment_recommendations() -> None:
             "upsert": True,
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_apply_projection_persists_assignment_history() -> None:
+    worker = EventWorker()
+    fake_db = FakeMongoDatabase()
+    worker._mongo_db = fake_db  # type: ignore[assignment]
+    processed_at = datetime(2026, 2, 18, 10, 46, 22, tzinfo=timezone.utc)
+    event = EventEnvelope(
+        schema_version=1,
+        event_id="evt-456",
+        event_type="assignment.history.finalized",
+        occurred_at=processed_at,
+        producer="api",
+        correlation_id="corr-456",
+        team_id="team_123",
+        payload={
+            "week_start": "2026-02-23",
+            "assignments": [
+                {
+                    "role_code": "role_1",
+                    "user_id": "user-a",
+                    "source": "auto",
+                },
+                {
+                    "role_code": "role_2",
+                    "user_id": "user-b",
+                    "source": "manual_override",
+                },
+            ],
+            "finalized_by": "admin-1",
+        },
+    )
+
+    await worker._apply_projection(event, processed_at)
+
+    assert fake_db.assignment_history.update_calls == [
+        {
+            "filter": {
+                "team_id": "team_123",
+                "week_start": "2026-02-23",
+            },
+            "update": {
+                "$set": {
+                    "team_id": "team_123",
+                    "week_start": "2026-02-23",
+                    "assignments": [
+                        {
+                            "role_code": "role_1",
+                            "user_id": "user-a",
+                            "source": "auto",
+                        },
+                        {
+                            "role_code": "role_2",
+                            "user_id": "user-b",
+                            "source": "manual_override",
+                        },
+                    ],
+                    "finalized_by": "admin-1",
+                    "finalized_at": processed_at,
+                    "source_event_ids": ["evt-456"],
+                }
+            },
+            "upsert": True,
+        }
+    ]
+
