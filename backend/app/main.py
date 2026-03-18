@@ -11,12 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import check_database_connection
-from app.schemas.events import (
-    DLQReplayResponse,
-    EventIngestionRequest,
-    EventIngestionResponse,
-    build_event_envelope,
-)
 from app.services.dlq_replay import (
     DLQReplayError,
     RabbitMQDLQReplayService,
@@ -27,6 +21,18 @@ from app.services.replay_audit import (
     MongoReplayAuditService,
     ReplayAuditError,
     get_replay_audit_service,
+)
+from app.services.assignments import (
+    HistoryCheckError,
+    MongoHistoryCheckService,
+    get_history_check_service,
+)
+from app.schemas.events import (
+    AssignmentHistoryFinalizedPayload,
+    DLQReplayResponse,
+    EventIngestionRequest,
+    EventIngestionResponse,
+    build_event_envelope,
 )
 
 LOGGER = logging.getLogger("role_manager.api")
@@ -148,6 +154,63 @@ async def replay_next_dlq_event(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Unable to replay DLQ message: {exc}",
         ) from exc
+
+
+@app.post(
+    "/teams/{team_id}/assignments/finalize",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def finalize_assignments(
+    team_id: str,
+    payload: AssignmentHistoryFinalizedPayload,
+    event_publisher: RabbitMQPublisher = Depends(get_event_publisher),
+    history_checker: MongoHistoryCheckService = Depends(get_history_check_service),
+):
+    """
+    Finalize assignments for a team and week, emitting a finalization event.
+    Prevents duplicate finalizations for the same week.
+    """
+    week_start_str = payload.week_start.isoformat()
+    
+    try:
+        is_finalized = await history_checker.is_week_finalized(team_id, week_start_str)
+    except HistoryCheckError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to check assignment history: {exc}",
+        ) from exc
+
+    if is_finalized:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Assignments for team '{team_id}' on week '{week_start_str}' are already finalized.",
+        )
+
+    event_request = EventIngestionRequest(
+        event_type="assignment.history.finalized",
+        team_id=team_id,
+        payload=payload.model_dump(mode="json"),
+    )
+    
+    envelope = build_event_envelope(
+        event_request,
+        default_producer=settings.default_event_producer,
+    )
+
+    try:
+        await event_publisher.publish(envelope)
+    except EventPublishError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to publish finalization event: {exc}",
+        ) from exc
+
+    return {
+        "status": "accepted",
+        "team_id": team_id,
+        "week_start": week_start_str,
+        "event_id": envelope.event_id,
+    }
 
 
 async def _record_replay_audit(
