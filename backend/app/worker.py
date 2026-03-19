@@ -446,11 +446,13 @@ class EventWorker:
             {
                 "user_id": candidate.user_id,
                 "score": (candidate.last_done * candidate.motivation_factor)
-                + candidate.experience_factor,
+                + candidate.experience_factor
+                + (100.0 if candidate.is_volunteer else 0.0),
                 "score_breakdown": {
                     "last_done": candidate.last_done,
                     "motivation_factor": candidate.motivation_factor,
                     "experience_factor": candidate.experience_factor,
+                    "is_volunteer": candidate.is_volunteer,
                 },
             }
             for candidate in candidates
@@ -461,6 +463,7 @@ class EventWorker:
                 -candidate["score_breakdown"]["last_done"],
                 -candidate["score_breakdown"]["motivation_factor"],
                 -candidate["score_breakdown"]["experience_factor"],
+                not candidate["score_breakdown"]["is_volunteer"],
                 candidate["user_id"],
             )
         )

@@ -182,6 +182,7 @@ def test_build_assignment_recommendations_prefers_highest_score_and_is_determini
                 "last_done": 5,
                 "motivation_factor": 1.0,
                 "experience_factor": 1.0,
+                "is_volunteer": False,
             },
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
@@ -201,6 +202,7 @@ def test_build_assignment_recommendations_prefers_highest_score_and_is_determini
                 "last_done": 4,
                 "motivation_factor": 1.0,
                 "experience_factor": 1.0,
+                "is_volunteer": False,
             },
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
@@ -270,6 +272,7 @@ def test_build_assignment_recommendations_prioritizes_most_constrained_role_for_
                 "last_done": 2,
                 "motivation_factor": 1.0,
                 "experience_factor": 1.0,
+                "is_volunteer": False,
             },
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
@@ -289,6 +292,7 @@ def test_build_assignment_recommendations_prioritizes_most_constrained_role_for_
                 "last_done": 1,
                 "motivation_factor": 1.0,
                 "experience_factor": 1.0,
+                "is_volunteer": False,
             },
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
@@ -352,6 +356,7 @@ def test_build_assignment_recommendations_marks_role_unassigned_when_no_unique_c
                 "last_done": 4,
                 "motivation_factor": 1.0,
                 "experience_factor": 1.0,
+                "is_volunteer": False,
             },
             "event_ids": ["evt-123"],
             "generated_at": processed_at,
@@ -436,6 +441,7 @@ async def test_apply_projection_persists_assignment_recommendations() -> None:
                         "last_done": 5,
                         "motivation_factor": 1.0,
                         "experience_factor": 1.0,
+                        "is_volunteer": False,
                     },
                     "event_ids": ["evt-123"],
                     "generated_at": processed_at,
@@ -450,6 +456,64 @@ async def test_apply_projection_persists_assignment_recommendations() -> None:
     ]
 
 
+def test_build_assignment_recommendations_prioritizes_volunteers() -> None:
+    worker = EventWorker()
+    payload = AssignmentRecommendationsRequestedPayload.model_validate(
+        {
+            "week_start": "2026-02-23",
+            "roles": [
+                {
+                    "role_code": "role_1",
+                    "candidates": [
+                        {
+                            "user_id": "user-a",
+                            "last_done": 8,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                            "is_volunteer": False,
+                        },
+                        {
+                            "user_id": "user-b",
+                            "last_done": 1,
+                            "motivation_factor": 1.0,
+                            "experience_factor": 1.0,
+                            "is_volunteer": True,
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+    processed_at = datetime(2026, 2, 18, 10, 46, 22, tzinfo=timezone.utc)
+
+    recommendations = worker._build_assignment_recommendations(
+        "team_123",
+        payload,
+        "evt-123",
+        processed_at,
+    )
+
+    assert recommendations == [
+        {
+            "team_id": "team_123",
+            "week_start": "2026-02-23",
+            "role_code": "role_1",
+            "recommended_user_id": "user-b",
+            "score": 102.0,
+            "score_breakdown": {
+                "last_done": 1,
+                "motivation_factor": 1.0,
+                "experience_factor": 1.0,
+                "is_volunteer": True,
+            },
+            "event_ids": ["evt-123"],
+            "generated_at": processed_at,
+            "explanation": (
+                "Highest fair score among submitted candidates. "
+                "Ties resolve deterministically by score inputs and user_id."
+            ),
+        }
+    ]
 @pytest.mark.asyncio
 async def test_apply_projection_persists_assignment_history() -> None:
     worker = EventWorker()

@@ -89,6 +89,7 @@ class RecommendationCandidateInput(BaseModel):
     last_done: int = Field(ge=0)
     motivation_factor: float = Field(default=1.0, gt=0)
     experience_factor: float = Field(default=1.0)
+    is_volunteer: bool = Field(default=False)
 
 
 class RecommendationRoleInput(BaseModel):
