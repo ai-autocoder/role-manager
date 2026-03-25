@@ -35,6 +35,14 @@ from app.schemas.events import (
     build_event_envelope,
 )
 
+from app.schemas.teams import TeamResponse
+from app.services.teams import (
+    MongoTeamService,
+    TeamNotFoundError,
+    TeamServiceError,
+    get_team_service,
+)
+
 LOGGER = logging.getLogger("role_manager.api")
 
 # Create FastAPI application
@@ -211,6 +219,33 @@ async def finalize_assignments(
         "week_start": week_start_str,
         "event_id": envelope.event_id,
     }
+
+
+@app.get(
+    "/teams/{team_id}",
+    response_model=TeamResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_team(
+    team_id: str,
+    team_service: MongoTeamService = Depends(get_team_service),
+):
+    """
+    Get a team by ID.
+    """
+    try:
+        team = await team_service.get_team(team_id)
+        if not team:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Team '{team_id}' not found.",
+            )
+        return team
+    except TeamServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error while fetching team: {exc}",
+        ) from exc
 
 
 async def _record_replay_audit(
