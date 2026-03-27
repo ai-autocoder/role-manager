@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Optional
+import uuid
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -30,6 +31,27 @@ class MongoTeamService:
             return team_doc
         except Exception as exc:
             LOGGER.error("Failed to fetch team %s: %s", team_id, exc)
+            raise TeamServiceError(str(exc)) from exc
+
+    async def create_team(self, name: str, roles: list, users: list) -> dict:
+        """Insert a new team document and return it."""
+        await self._ensure_connected()
+        if self._mongo_db is None:
+            raise TeamServiceError("MongoDB is not initialized for team creation")
+
+        team_id = f"team_{uuid.uuid4().hex[:12]}"
+        team_doc = {
+            "team_id": team_id,
+            "name": name,
+            "roles": roles,
+            "users": users,
+        }
+        try:
+            await self._mongo_db.teams.insert_one(team_doc)
+            LOGGER.info("Created team %s (%s)", name, team_id)
+            return team_doc
+        except Exception as exc:
+            LOGGER.error("Failed to create team %s: %s", name, exc)
             raise TeamServiceError(str(exc)) from exc
 
     async def _ensure_connected(self) -> None:

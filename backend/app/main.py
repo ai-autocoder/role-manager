@@ -35,7 +35,7 @@ from app.schemas.events import (
     build_event_envelope,
 )
 
-from app.schemas.teams import TeamResponse
+from app.schemas.teams import TeamCreateRequest, TeamResponse
 from app.services.teams import (
     MongoTeamService,
     TeamNotFoundError,
@@ -219,6 +219,33 @@ async def finalize_assignments(
         "week_start": week_start_str,
         "event_id": envelope.event_id,
     }
+
+
+@app.post(
+    "/teams",
+    response_model=TeamResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_team(
+    payload: TeamCreateRequest,
+    team_service: MongoTeamService = Depends(get_team_service),
+):
+    """
+    Create a new team with optional roles and users.
+    Returns the created team including its server-generated team_id.
+    """
+    try:
+        team = await team_service.create_team(
+            name=payload.name,
+            roles=[r.model_dump() for r in payload.roles],
+            users=[u.model_dump() for u in payload.users],
+        )
+        return team
+    except TeamServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error while creating team: {exc}",
+        ) from exc
 
 
 @app.get(
