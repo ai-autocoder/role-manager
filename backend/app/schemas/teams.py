@@ -28,3 +28,8 @@ class TeamResponse(BaseModel):
     name: str
     roles: List[Role] = Field(default_factory=list)
     users: List[User] = Field(default_factory=list)
+
+
+class TeamListResponse(BaseModel):
+    teams: List[TeamResponse]
+    count: int

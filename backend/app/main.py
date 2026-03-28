@@ -35,7 +35,7 @@ from app.schemas.events import (
     build_event_envelope,
 )
 
-from app.schemas.teams import TeamCreateRequest, TeamResponse
+from app.schemas.teams import TeamCreateRequest, TeamListResponse, TeamResponse
 from app.services.teams import (
     MongoTeamService,
     TeamNotFoundError,
@@ -273,6 +273,53 @@ async def get_team(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error while fetching team: {exc}",
         ) from exc
+
+
+@app.get(
+    "/teams",
+    response_model=TeamListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_teams(
+    team_service: MongoTeamService = Depends(get_team_service),
+):
+    """
+    Return all teams sorted by name.
+    """
+    try:
+        teams = await team_service.list_teams()
+        return TeamListResponse(teams=teams, count=len(teams))
+    except TeamServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error while listing teams: {exc}",
+        ) from exc
+
+
+@app.delete(
+    "/teams/{team_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_team(
+    team_id: str,
+    team_service: MongoTeamService = Depends(get_team_service),
+):
+    """
+    Delete a team by ID. Returns 204 on success, 404 if not found.
+    """
+    try:
+        deleted = await team_service.delete_team(team_id)
+    except TeamServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error while deleting team: {exc}",
+        ) from exc
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Team '{team_id}' not found.",
+        )
 
 
 async def _record_replay_audit(

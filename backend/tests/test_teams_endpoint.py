@@ -9,9 +9,22 @@ from app.services.teams import TeamServiceError, get_team_service
 
 
 class FakeTeamService:
-    def __init__(self, mock_team: dict = None, mock_error: bool = False):
+    def __init__(
+        self,
+        mock_team: dict = None,
+        mock_error: bool = False,
+        mock_teams: list = None,
+        mock_deleted: bool = True,
+    ):
         self._mock_team = mock_team
         self._mock_error = mock_error
+        self._mock_teams = mock_teams if mock_teams is not None else []
+        self._mock_deleted = mock_deleted
+
+    async def list_teams(self) -> list:
+        if self._mock_error:
+            raise TeamServiceError("database unavailable")
+        return self._mock_teams
 
     async def get_team(self, team_id: str):
         if self._mock_error:
@@ -29,6 +42,11 @@ class FakeTeamService:
             "roles": roles,
             "users": users,
         }
+
+    async def delete_team(self, team_id: str) -> bool:
+        if self._mock_error:
+            raise TeamServiceError("database unavailable")
+        return self._mock_deleted
 
 
 # --- GET /teams/{team_id} tests ---
@@ -147,6 +165,98 @@ def test_create_team_returns_500_on_service_error() -> None:
     try:
         with TestClient(app) as client:
             response = client.post("/teams", json={"name": "Broken Team"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    assert "database unavailable" in response.json()["detail"]
+
+
+# --- GET /teams tests ---
+
+def test_list_teams_returns_all_teams() -> None:
+    mock_teams = [
+        {"team_id": "team_1", "name": "Alpha Team", "roles": [], "users": []},
+        {"team_id": "team_2", "name": "Beta Team", "roles": [], "users": []},
+    ]
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_teams=mock_teams)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/teams")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 2
+    assert len(body["teams"]) == 2
+    assert body["teams"][0]["team_id"] == "team_1"
+    assert body["teams"][1]["team_id"] == "team_2"
+
+
+def test_list_teams_returns_empty_list() -> None:
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_teams=[])
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/teams")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 0
+    assert body["teams"] == []
+
+
+def test_list_teams_returns_500_on_service_error() -> None:
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_error=True)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/teams")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    assert "database unavailable" in response.json()["detail"]
+
+
+# --- DELETE /teams/{team_id} tests ---
+
+def test_delete_team_success_returns_204() -> None:
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_deleted=True)
+
+    try:
+        with TestClient(app) as client:
+            response = client.delete("/teams/team_123")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_delete_team_not_found_returns_404() -> None:
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_deleted=False)
+
+    try:
+        with TestClient(app) as client:
+            response = client.delete("/teams/nonexistent_team")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+def test_delete_team_returns_500_on_service_error() -> None:
+    app.dependency_overrides[get_team_service] = lambda: FakeTeamService(mock_error=True)
+
+    try:
+        with TestClient(app) as client:
+            response = client.delete("/teams/team_123")
     finally:
         app.dependency_overrides.clear()
 

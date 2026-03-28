@@ -21,6 +21,19 @@ class MongoTeamService:
         self._mongo_db: AsyncIOMotorDatabase | None = None
         self._lock = asyncio.Lock()
 
+    async def list_teams(self) -> list[dict]:
+        """Return all team documents sorted by name."""
+        await self._ensure_connected()
+        if self._mongo_db is None:
+            raise TeamServiceError("MongoDB is not initialized for team listing")
+
+        try:
+            cursor = self._mongo_db.teams.find({}).sort("name", 1)
+            return await cursor.to_list(length=None)
+        except Exception as exc:
+            LOGGER.error("Failed to list teams: %s", exc)
+            raise TeamServiceError(str(exc)) from exc
+
     async def get_team(self, team_id: str) -> Optional[dict]:
         await self._ensure_connected()
         if self._mongo_db is None:
@@ -52,6 +65,24 @@ class MongoTeamService:
             return team_doc
         except Exception as exc:
             LOGGER.error("Failed to create team %s: %s", name, exc)
+            raise TeamServiceError(str(exc)) from exc
+
+    async def delete_team(self, team_id: str) -> bool:
+        """Delete a team by ID. Returns True if deleted, False if not found."""
+        await self._ensure_connected()
+        if self._mongo_db is None:
+            raise TeamServiceError("MongoDB is not initialized for team deletion")
+
+        try:
+            result = await self._mongo_db.teams.delete_one({"team_id": team_id})
+            deleted = result.deleted_count > 0
+            if deleted:
+                LOGGER.info("Deleted team %s", team_id)
+            else:
+                LOGGER.warning("Delete requested for unknown team %s", team_id)
+            return deleted
+        except Exception as exc:
+            LOGGER.error("Failed to delete team %s: %s", team_id, exc)
             raise TeamServiceError(str(exc)) from exc
 
     async def _ensure_connected(self) -> None:
